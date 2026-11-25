@@ -18,6 +18,17 @@
 3. **Campaign Trust Anchor:**
    - All campaigns must register a read-only **Unified Full Viewing Key (`uview...` / UFVK)**, funding `txid`, expected total ZEC, and clawback expiry block height **before** any claim link or QR is distributed.
    - Viewing keys provide incoming and outgoing view capability for auditing, but cannot spend funds (ZIP 310 / ZIP 326).
+   - Public responses expose only the UFVK's SHA-256 fingerprint unless the organizer opted in (`publishUfvk`): the full key's OVK decrypts every payout, recipients included.
+
+4. **On-Chain Checks (never claim more than the chain says):**
+   - Funding, payout, sweep and clawback txids are looked up through lightwalletd (`src/lib/chain/txCheck.ts`) and stored as a `ChainTxCheck` (status, height, shape). UI copy restates that result and nothing more: shielded amounts and recipients are never "verified".
+   - Lane 2 recipients count as paid only with a recorded payout txid found on-chain. Clawback requires the live chain tip past the expiry height. If the node is unreachable, these writes fail (503) rather than skipping the check (demo campaign excepted, labeled simulated).
+   - There is no spend simulation and no nullifier watcher: ZecClaim cannot see gift-card sweeps (each card is its own key). Never reintroduce either.
+
+5. **Recipient Addresses Never Go Public:**
+   - Recipient addresses are never shown on the proof portal or returned by any public endpoint (`/api/proof`, `GET /api/campaigns/[id]`, the claim page, which shows only a masked hint). Not in full, truncated, hashed per recipient, or decrypted from a payout.
+   - Only the organizer console shows them, behind the organizer secret (`POST /api/campaigns/[id]/addresses`), and only until the scrub.
+   - The clawback address is the organizer's own and stays public by design.
 
 ---
 
@@ -40,31 +51,41 @@ ZecClaim strictly enforces post-NU7 shielded privacy standards. Both client-side
    - UA addresses containing only Sapling receivers (`0x02`) are valid but flagged as legacy.
 
 4. **Required Receiver:**
-   - Modern Unified Addresses must contain an **Orchard receiver** (`0x03`) or **Ironwood receiver** (post-NU7 shielded pool).
+   - Modern Unified Addresses must contain an **Orchard receiver** (`0x03`). Ironwood reuses the Orchard receiver format; the ZIP 316 registry assigns no separate Ironwood typecode (`0x04` is unassigned and must be ignored like any unknown item).
+
+5. **ZIP 316 Consumer Rules:**
+   - Reject items that are not in strictly ascending typecode order (this also rejects duplicates).
+   - Reject unrecognized MUST-understand metadata items (`0xE0`-`0xFC`), e.g. address expiry.
+   - Legacy Sapling (`zs1...`) addresses must be fully Bech32-decoded (43-byte payload), never accepted by prefix alone.
+   - Campaign UFVKs (`uview`, `uviewtest`, `uvf`, `uvftest`) must pass the same Bech32m + F4Jumble + item checks.
 
 ---
 
-## 3. Strict UI & Design Rules (Zero Cliché Policy)
+## 3. UI & Design Rules (Tactile Neomorphism, Light + Dark)
 
-To preserve the utility-focused, high-contrast developer and DAO audit aesthetic:
+The UI follows the tactile neomorphic reference design (floating app shell, sidebar rail, soft raised/inset surfaces, mint accent). Full spec: `docs/DESIGN_SYSTEM.md`.
 
-1. **Prohibited Visual Patterns:**
-   - **NO purple gradients** (`bg-gradient-to-r from-purple-500...`).
-   - **NO pill-shaped buttons** (`rounded-full`). All interactive elements must have sharp, crisp corners (`rounded-none` or `rounded-sm`).
-   - **NO fake metrics or mock testimonials** (e.g., "$10M disbursed", "Trusted by 50,000 users", fake 5-star quotes).
-   - **NO vague marketing hero fluff** (e.g., "The future of web3 payments unlocked").
-   - **NO em dashes (`—`) in UI copy**. Use clean colons, parentheses, or simple hyphens.
+1. **Themes:**
+   - **Light is the default** (the reference look): `#F2F5F8` surfaces on a `#E9EEF3` canvas.
+   - **Dark is opt-in** via the header theme toggle (stored per viewer, `data-theme="dark"` on `<html>`; `?theme=dark|light` also works).
+   - Never hard-code colors in components. Use the CSS-variable tokens (`bg-surface`, `text-ink`, `text-muted`, `border-line`, `text-rose-fg`, ...) so both themes come from one set of class names.
 
-2. **Permitted Color & Surface Palette:**
-   - Dark mode slate/black surfaces: `#020617` (slate-950), `#0f172a` (slate-900), `#1e293b` (slate-800).
-   - High-contrast crisp border lines: `border-slate-800`, `border-slate-700`.
-   - Restrained Zcash amber accent: `#f59e0b` (amber-500) and `#d97706` (amber-600) strictly for active states, CTA borders, and primary status indicators.
-   - Crisp status badges:
-     - `Verified Shielded`: Emerald-500/10 with Emerald-500 text and sharp border.
-     - `Rejected Transparent`: Rose-500/10 with Rose-500 text and sharp border.
-     - `Spent Nullifier`: Cyan-500/10 with Cyan-500 text and sharp border.
-     - `ACK Confirmed`: Amber-500/10 with Amber-500 text and sharp border.
-     - `Clawed Back`: Slate-500/10 with Slate-400 text and sharp border.
+2. **Surfaces & Accent:**
+   - Panels use `.neo-card` / `.neo-card-sm`, wells and inputs use `.neo-inset` / `.neo-field`, the window uses `.neo-shell`.
+   - Mint `#14C39A` is the single brand accent. The primary CTA is the mint-outlined `.neo-btn-mint`; destructive actions use `.neo-btn-danger`.
+   - Rounded corners (8-22px) and round icon buttons are part of the system.
+
+3. **Status Badges (semantic, both themes):**
+   - `Verified Shielded`: mint tint. `Rejected Transparent` / disputes: rose tint. On-chain evidence (`chain` variant, txid found by lightwalletd): cyan tint.
+   - `ACK Confirmed`: solid mint. `Clawed Back`: slate tint. `PII Purged`: violet tint. Warnings / testnet / demo: amber tint.
+
+4. **Content Rules (unchanged):**
+   - **NO fake metrics or mock testimonials.** Every number shown must come from campaign records or protocol math.
+   - **NO vague marketing hero fluff.** State what the product does.
+   - **NO em dashes (`—`) in UI copy.** Use colons, parentheses, or simple hyphens.
+   - **Never claim verification that did not happen.** Simulated data must be labeled (Demo badges, "Simulated" audit tags).
+   - **Fixture data lives only in the judge sandbox** (`/sandbox`, `NEXT_PUBLIC_ZECCLAIM_SANDBOX`). Real forms never generate keys, txids or addresses, the home page never seeds anything, and navigation never defaults to the sandbox campaign.
+   - Overview sections must earn their place: explain the idea or let a judge use the working product.
 
 ---
 
@@ -104,7 +125,9 @@ Code touching fee calculations, batching, block delays, or lightnode connections
 1. **Verification Before Turn Completion:**
    - All tests must pass: `npm run test`
    - Typechecking must pass: `npm run typecheck`
-   - Linting must pass: `npm run lint`
+   - Linting must pass: `npm run lint` (ESLint flat config, `eslint.config.mjs`)
+   - `npm run build` must succeed without secrets at build time (no pepper-dependent work at module import).
+   - `zecclaimUI/` is a temporary design reference: it is git-ignored and excluded from tsc, vitest and eslint.
 
 2. **Continuous Documentation Sync:**
    - Whenever an API endpoint is added or changed, update `docs/ARCHITECTURE.md`.

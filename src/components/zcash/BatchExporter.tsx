@@ -1,88 +1,82 @@
 "use client";
 
 import React, { useState } from "react";
+import { Download } from "lucide-react";
 import { PayoutChunk } from "@/types";
+import { Segmented } from "@/components/ui/tabs";
+import { CopyButton } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
 
 export interface BatchExporterProps {
-  campaignTitle: string;
-  chunks: PayoutChunk[];
+  chunks: Pick<PayoutChunk, "batchIndex" | "recipients" | "actionsCount" | "estimatedFeeZat" | "zip321Uri">[];
   zingoScript: string;
+  fileStem: string;
 }
 
-export function BatchExporter({ campaignTitle, chunks, zingoScript }: BatchExporterProps) {
-  const [activeTab, setActiveTab] = useState<"zip321" | "zingo">("zip321");
-  const [copied, setCopied] = useState(false);
+/** Signing artifacts for the organizer's own wallet: ZIP 321 URIs per transaction, or one zingo-cli script. */
+export function BatchExporter({ chunks, zingoScript, fileStem }: BatchExporterProps) {
+  const [format, setFormat] = useState<"zip321" | "zingo">("zip321");
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const downloadScript = () => {
+    const blob = new Blob([zingoScript], { type: "text/x-shellscript" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${fileStem}-payout.sh`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 p-5 rounded-none">
-      <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h4 className="text-sm font-bold text-white uppercase tracking-wider">
-            Self-Custody Batch Signing Artifacts
-          </h4>
-          <p className="text-xs text-slate-400">
-            Exported for local execution: {chunks.length} transaction chunks (&lt;= 300 actions each)
+          <p className="text-[13.5px] font-bold text-ink">Signing artifacts</p>
+          <p className="text-[12px] text-subtle">
+            {chunks.length} transaction{chunks.length === 1 ? "" : "s"}, each at most 300 actions. Sign in your own wallet.
           </p>
         </div>
-        <div className="flex space-x-1">
-          <Button
-            size="sm"
-            variant={activeTab === "zip321" ? "primary" : "secondary"}
-            onClick={() => setActiveTab("zip321")}
-          >
-            ZIP 321 URIs
-          </Button>
-          <Button
-            size="sm"
-            variant={activeTab === "zingo" ? "primary" : "secondary"}
-            onClick={() => setActiveTab("zingo")}
-          >
-            zingo-cli Script
-          </Button>
-        </div>
+        <Segmented
+          ariaLabel="Export format"
+          value={format}
+          onChange={setFormat}
+          options={[
+            { key: "zip321", label: "ZIP 321 URI" },
+            { key: "zingo", label: "zingo-cli script" },
+          ]}
+        />
       </div>
 
-      {activeTab === "zip321" ? (
-        <div className="flex flex-col space-y-3">
-          {chunks.map((chunk, idx) => (
-            <div key={idx} className="bg-slate-950 p-3 border border-slate-800 font-mono text-xs">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-amber-400 font-bold">
-                  Chunk {chunk.batchIndex + 1} ({chunk.recipients.length} recipients | {chunk.actionsCount} actions | {chunk.estimatedFeeZat} zat fee)
-                </span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => copyToClipboard(chunk.zip321Uri)}
-                >
-                  {copied ? "Copied URI" : "Copy ZIP 321 URI"}
-                </Button>
+      {format === "zip321" ? (
+        <div className="space-y-3">
+          {chunks.map((chunk) => (
+            <div key={chunk.batchIndex} className="neo-inset-sm rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[12px] font-semibold text-ink">
+                  Transaction {chunk.batchIndex + 1}: {chunk.recipients.length} recipient{chunk.recipients.length === 1 ? "" : "s"} ·{" "}
+                  {chunk.actionsCount} actions · {chunk.estimatedFeeZat.toLocaleString("en-US")} zat fee
+                </p>
+                <p className="font-mono text-[11px] text-subtle truncate mt-0.5" title={chunk.zip321Uri}>
+                  {chunk.zip321Uri}
+                </p>
               </div>
-              <p className="text-slate-400 truncate text-[11px]">{chunk.zip321Uri}</p>
+              <CopyButton value={chunk.zip321Uri} label={`Copy ZIP 321 URI for transaction ${chunk.batchIndex + 1}`} />
             </div>
           ))}
+          <p className="text-[11.5px] text-subtle">Paste into Zingo PC (or any ZIP 321 wallet) as a payment request.</p>
         </div>
       ) : (
-        <div className="flex flex-col space-y-3">
-          <div className="flex justify-end">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => copyToClipboard(zingoScript)}
-            >
-              {copied ? "Copied Script" : "Copy Full Shell Script"}
-            </Button>
-          </div>
-          <pre className="bg-slate-950 p-4 border border-slate-800 text-xs font-mono text-slate-300 overflow-x-auto max-h-64">
+        <div className="space-y-3">
+          <pre className="neo-inset-sm rounded-xl p-4 text-[11.5px] font-mono text-ink-soft overflow-x-auto max-h-72 leading-relaxed">
             {zingoScript}
           </pre>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button size="sm" onClick={downloadScript}>
+              <Download className="w-3.5 h-3.5" /> Download script
+            </Button>
+            <CopyButton value={zingoScript} label="Copy zingo-cli script" />
+            <span className="text-[11.5px] text-subtle">Runs quicksend per transaction, waiting for change to confirm between them.</span>
+          </div>
         </div>
       )}
     </div>

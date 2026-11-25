@@ -2,30 +2,275 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * ZecClaim tactile neomorphism surface system (see docs/DESIGN_SYSTEM.md).
+ *
+ * Light theme (default) is calibrated to the reference UI: #F2F5F8 surfaces on a #E9EEF3
+ * canvas. Dark theme keeps the same depth model with a charcoal canvas. Theme is chosen by
+ * the ThemeToggle and stored per viewer; it is applied as data-theme on <html>.
+ * Color tokens are RGB channels so Tailwind opacity modifiers keep working.
+ */
+
 :root {
-  --background: #020617;
-  --foreground: #f8fafc;
+  color-scheme: light;
+  --c-canvas: 233 238 243;
+  --c-surface: 242 245 248;
+  --c-inset: 237 241 246;
+  --c-rail: 237 241 245;
+  --c-line: 220 228 238;
+  --c-grid: 225 231 240;
+  --c-ink: 35 42 52;
+  --c-ink-soft: 76 89 107;
+  --c-muted: 105 119 138;
+  --c-subtle: 139 151 168;
+  --c-faint: 165 177 194;
+  --c-chip: 37 44 55;
+  --c-chip-fg: 255 255 255;
+  --c-mint-hover: 14 159 125;
+  --c-mint-deep: 13 142 111;
+  --c-rose-fg: 190 18 60;
+  --c-amber-fg: 180 83 9;
+  --c-cyan-fg: 14 116 144;
+  --c-violet-fg: 109 40 217;
+  --c-slate-fg: 71 85 105;
+  --c-neutral-fg: 94 108 126;
+
+  /* Neomorphic light source: highlight (top-left) and shade (bottom-right) */
+  --neo-hi: rgba(255, 255, 255, 0.92);
+  --neo-hi-strong: rgba(255, 255, 255, 0.98);
+  --neo-lo: rgba(174, 189, 205, 0.42);
+  --neo-lo-strong: rgba(163, 179, 196, 0.5);
+  --neo-rim: rgba(255, 255, 255, 0.85);
+  --neo-in-lo: rgba(174, 189, 205, 0.45);
+  --neo-in-hi: rgba(255, 255, 255, 0.92);
+  --chart-col-hi: 255 255 255;
+  --chart-col-op: 0.94;
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
+[data-theme="dark"] {
+  color-scheme: dark;
+  --c-canvas: 17 21 27;
+  --c-surface: 26 31 39;
+  --c-inset: 21 25 32;
+  --c-rail: 22 27 34;
+  --c-line: 44 51 62;
+  --c-grid: 40 47 58;
+  --c-ink: 230 235 241;
+  --c-ink-soft: 183 193 206;
+  --c-muted: 150 162 178;
+  --c-subtle: 125 138 155;
+  --c-faint: 93 104 118;
+  --c-chip: 233 238 243;
+  --c-chip-fg: 35 42 52;
+  --c-mint-hover: 52 211 170;
+  --c-mint-deep: 61 220 180;
+  --c-rose-fg: 251 113 133;
+  --c-amber-fg: 251 191 36;
+  --c-cyan-fg: 34 211 238;
+  --c-violet-fg: 167 139 250;
+  --c-slate-fg: 148 163 184;
+  --c-neutral-fg: 163 175 191;
+
+  --neo-hi: rgba(255, 255, 255, 0.045);
+  --neo-hi-strong: rgba(255, 255, 255, 0.06);
+  --neo-lo: rgba(0, 0, 0, 0.5);
+  --neo-lo-strong: rgba(0, 0, 0, 0.6);
+  --neo-rim: rgba(255, 255, 255, 0.05);
+  --neo-in-lo: rgba(0, 0, 0, 0.55);
+  --neo-in-hi: rgba(255, 255, 255, 0.035);
+  --chart-col-hi: 255 255 255;
+  --chart-col-op: 0.07;
 }
 
-/* Sharp, terminal-grade scrollbars */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    background-color: rgb(var(--c-canvas));
+    color: rgb(var(--c-ink));
+  }
+
+  body {
+    background-color: rgb(var(--c-canvas));
+    color: rgb(var(--c-ink));
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 200ms ease;
+  }
+
+  ::selection {
+    background: rgba(20, 195, 154, 0.22);
+    color: rgb(var(--c-mint-deep));
+  }
 }
-::-webkit-scrollbar-track {
-  background: #020617;
+
+@layer components {
+  .neo-shell {
+    background: rgb(var(--c-surface));
+    box-shadow:
+      -18px -18px 36px var(--neo-hi),
+      20px 22px 46px var(--neo-lo-strong),
+      inset 1px 1px 0px var(--neo-rim);
+  }
+
+  .neo-card {
+    background: rgb(var(--c-surface));
+    box-shadow:
+      -7px -7px 16px var(--neo-hi),
+      7px 8px 18px var(--neo-lo),
+      inset 1px 1px 0px var(--neo-rim);
+  }
+
+  .neo-card-sm {
+    background: rgb(var(--c-surface));
+    box-shadow:
+      -5px -5px 12px var(--neo-hi),
+      5px 5px 12px var(--neo-lo),
+      inset 1px 1px 0px var(--neo-rim);
+  }
+
+  .neo-inset {
+    background: rgb(var(--c-inset));
+    box-shadow:
+      inset 4px 4px 8px var(--neo-in-lo),
+      inset -4px -4px 8px var(--neo-in-hi);
+  }
+
+  .neo-inset-sm {
+    background: rgb(var(--c-inset));
+    box-shadow:
+      inset 2px 2px 5px var(--neo-in-lo),
+      inset -2px -2px 5px var(--neo-in-hi);
+  }
+
+  .neo-btn {
+    background: rgb(var(--c-surface));
+    box-shadow:
+      -5px -5px 11px var(--neo-hi-strong),
+      5px 5px 12px var(--neo-lo);
+    transition:
+      box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      color 180ms ease,
+      border-color 180ms ease;
+  }
+  .neo-btn:hover {
+    box-shadow:
+      -6px -6px 14px var(--neo-hi-strong),
+      7px 7px 16px var(--neo-lo-strong);
+    transform: translateY(-1px);
+  }
+  .neo-btn:active {
+    box-shadow:
+      inset 3px 3px 7px var(--neo-in-lo),
+      inset -3px -3px 7px var(--neo-in-hi);
+    transform: translateY(0);
+  }
+
+  .neo-btn-mint {
+    background: rgb(var(--c-surface));
+    border: 1.5px solid #14c39a;
+    color: rgb(var(--c-mint-hover));
+    box-shadow:
+      -5px -5px 12px var(--neo-hi),
+      5px 5px 13px var(--neo-lo);
+    transition:
+      background-color 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      color 180ms ease,
+      box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .neo-btn-mint:hover {
+    background: #14c39a;
+    color: #ffffff;
+    box-shadow:
+      -4px -4px 12px var(--neo-hi),
+      6px 8px 18px rgba(20, 195, 154, 0.34);
+    transform: translateY(-1px);
+  }
+  .neo-btn-mint:active {
+    transform: translateY(0);
+    box-shadow:
+      inset 3px 3px 8px rgba(11, 130, 101, 0.38),
+      inset -2px -2px 6px rgba(84, 232, 196, 0.35);
+  }
+
+  .neo-btn-danger {
+    background: rgb(var(--c-surface));
+    border: 1.5px solid rgba(225, 29, 72, 0.7);
+    color: rgb(var(--c-rose-fg));
+    box-shadow:
+      -5px -5px 12px var(--neo-hi),
+      5px 5px 13px var(--neo-lo);
+    transition:
+      background-color 180ms ease,
+      color 180ms ease,
+      transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .neo-btn-danger:hover {
+    background: #e11d48;
+    color: #ffffff;
+    transform: translateY(-1px);
+  }
+
+  .neo-icon-btn {
+    background: rgb(var(--c-surface));
+    box-shadow:
+      -4px -4px 9px var(--neo-hi-strong),
+      4px 4px 10px var(--neo-lo);
+    transition:
+      box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .neo-icon-btn:hover {
+    box-shadow:
+      -5px -5px 12px var(--neo-hi-strong),
+      5px 6px 13px var(--neo-lo-strong);
+    transform: translateY(-1px);
+  }
+  .neo-icon-btn:active {
+    box-shadow:
+      inset 2px 2px 6px var(--neo-in-lo),
+      inset -2px -2px 6px var(--neo-in-hi);
+    transform: translateY(0);
+  }
+
+  .neo-visa-mint {
+    background: linear-gradient(135deg, #27ddae 0%, #14c39a 52%, #0eb28c 100%);
+    box-shadow:
+      -6px -6px 14px var(--neo-hi),
+      8px 12px 24px rgba(20, 195, 154, 0.28);
+  }
+
+  .neo-visa-dark {
+    background: linear-gradient(135deg, #323946 0%, #262c37 58%, #1d222b 100%);
+    box-shadow:
+      -6px -6px 14px var(--neo-hi),
+      8px 12px 24px rgba(0, 0, 0, 0.32);
+  }
+
+  [data-theme="dark"] .neo-visa-dark {
+    background: linear-gradient(135deg, #3b4453 0%, #2d3441 58%, #252b36 100%);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .neo-field {
+    @apply neo-inset-sm w-full rounded-[10px] px-3.5 py-2.5 text-[13px] text-ink placeholder:text-faint transition-shadow focus:outline-none focus:ring-2 focus:ring-mint/60 disabled:opacity-60;
+  }
 }
-::-webkit-scrollbar-thumb {
-  background: #1e293b;
-  border-radius: 0px;
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .animate-fade-up {
+    animation: none !important;
+  }
 }
-::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+
+@media print {
+  html,
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
 }

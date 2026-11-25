@@ -1,153 +1,178 @@
 # ZecClaim
 
-> **100% Non-Custodial Dual-Mode QR Payout & ZecHub DAO Proof Portal for Post-NU7 Zcash**
-> Built for November 2026 Zcash: 25-second blocks, 330-action block cap, Ironwood shielded pool, and ZIP 2009 1,000-zatoshi marginal fees.
+> **Non-custodial shielded payouts for Zcash meetups and bounties, checked on-chain and published on a public proof portal.**
+> Built for post-NU7 Zcash (November 2026): 25-second blocks, a 330-action block budget, the Ironwood pool and ZIP 2009 1,000-zatoshi marginal fees.
 
 ---
 
-## Overview
+## The Problem
 
-**ZecClaim** is an open-source, non-custodial issuance, preflight, and DAO accountability portal for Zcash disbursements. It eliminates the operational friction and privacy risks of funding in-person meetup attendees, hackathon winners, and online bounty contributors.
+Paying 30 meetup attendees or 50 bounty winners in shielded ZEC is still awkward:
 
-### The Fundamental Problem: Why Escrow Fails on Zcash
-1. **No Native Timelocks in Shielded Pools:** Zcash shielded pools (Sapling, Orchard, Ironwood) deliberately lack stateful smart contracts, and relative timelocks (`OP_CHECKSEQUENCEVERIFY`) remain undeployed in shielded circuits.
-2. **Transparent Escrow Destroys Privacy:** Reverting to transparent multisig escrow permanently links recipient identities on public block explorers, defeating the purpose of Zcash.
-3. **Interactive Multisig (FROST) Is Impractical:** FROST 2-of-3 threshold setups require multiple rounds of interactive key generation and signing between untrusted parties, which is completely unusable for casual meetup attendees or anonymous bounty hunters.
+1. **Shielded pools have no escrow.** There are no timelocks or contracts to hold a prize pool, and transparent multisig escrow publicly links every recipient.
+2. **People paste the wrong address.** One transparent address (or a Unified Address with a transparent receiver) leaks a payout onto the public chain.
+3. **The community has to trust the organizer's spreadsheet.** "We paid everyone" is rarely checkable without exposing who got what.
 
-### The ZecClaim Solution: Dual-Lane Non-Custodial Architecture
-Instead of holding user funds or pretending smart-contract escrow exists on shielded pools, ZecClaim acts as the **missing coordination, preflight validation, and DAO verification layer** over open Zcash standards:
+## What ZecClaim Does
+
+ZecClaim never holds keys or funds. It is the coordination and audit layer around the organizer's own wallet:
 
 ```text
-+----------------------------------------------------------------------------------------------------+
-|                                    CAMPAIGN TRUST ANCHOR                                          |
-|   Organizer registers read-only Unified Full Viewing Key (uview...), Funding TxID, and Expiry     |
-+----------------------------------------------------------------------------------------------------+
-                                      |
-         +----------------------------+----------------------------+
-         |                                                         |
-         v                                                         v
-+-----------------------------------+     +---------------------------------------------------------+
-| LANE 1: OFFLINE MEETUPS & EVENTS  |     | LANE 2: ONLINE BOUNTIES & ASYNC PAYOUTS                 |
-| (Bearer Preset QRs — ZIP 324)     |     | (Non-Bearer Blind Claim -> 1-Tx Shielded Batch)         |
-+-----------------------------------+     +---------------------------------------------------------+
-| * Import Vizor ZIP 324 CSV batch  |     | * Single-use blind claim tokens (SHA-256 hashed in DB)  |
-| * Printable desk check-in slips   |     | * Strict ZIP 316 Preflight (Reject t1... and mixed UAs) |
-| * Public Card ID (CARD-01)        |     | * Auto-chunked batching (<= 300 actions per tx)         |
-| * Nullifier-gated encrypted memo  |     | * Multi-payment ZIP 321 URIs + zingo-cli script export  |
-|   ACK-XXXX verification via UFVK  |     | * 1-Click PII Scrub with SHA-256 public attestation     |
-| * Dispute tripwire & clawback     |     | * Zero OAuth, zero social-to-address linkage            |
-+-----------------------------------+     +---------------------------------------------------------+
-                                      |
-                                      v
-+----------------------------------------------------------------------------------------------------+
-|                                ZECHUB DAO PROOF PORTAL                                            |
-|   UFVK-Anchored Public Ledger * Spent Nullifier Verification * Optional ZIP 311 Output Badges     |
-+----------------------------------------------------------------------------------------------------+
++--------------------------------------------------------------------------------------------+
+|  ANCHOR: read-only viewing key (fingerprint published) + funding txid looked up on-chain   |
++--------------------------------------------------------------------------------------------+
+            |                                                        |
+            v                                                        v
++-------------------------------------+      +--------------------------------------------+
+| LANE 1: MEETUPS (ZIP 324 gift cards)|      | LANE 2: ONLINE BOUNTIES (claim links)      |
++-------------------------------------+      +--------------------------------------------+
+| * Vizor / Zodl CSV parsed in the    |      | * Single-use links (peppered hashes)       |
+|   browser; #key= never leaves it    |      | * ZIP 316 preflight: no transparent        |
+| * Printable slips + desk mode       |      |   receivers, network lock                  |
+| * Receipt = memo code, optional     |      | * <= 300-action batches, ZIP 321 URIs and  |
+|   sweep txid checked on-chain       |      |   zingo-cli script for your own wallet     |
+| * Public "card was empty" disputes  |      | * Payout txid recorded and checked:        |
+| * Clawback only after the expiry    |      |   mined, room for every recipient,         |
+|   height, clawback txid on-chain    |      |   no transparent outputs                   |
++-------------------------------------+      | * Address scrub once paid (SHA-256 commit) |
+            |                                +--------------------------------------------+
+            v                                                        v
++--------------------------------------------------------------------------------------------+
+|  PROOF PORTAL: where every zatoshi sits * what the chain confirms * disputes * audit trail |
++--------------------------------------------------------------------------------------------+
 ```
 
 ---
 
 ## Key Features
 
-- **Strict ZIP 316 Client & Server Preflight:** Comprehensive Bech32m and F4Jumble address decoding. Instantly hard-rejects transparent addresses (`t1...`) and multi-receiver Unified Addresses (`u1...`) bundling transparent receivers, preventing pool contamination.
-- **Auto-Chunked Batch Payouts (<= 300 Actions):** Built for NU7's 330-action block cap. Bundles verified claims into safe transactions with real-time ZIP 2009 marginal fee calculations, exporting ready-to-sign ZIP 321 payment request URIs and Mumbai lightnode-targeted `zingo-cli` scripts.
-- **Nullifier-Gated ACK Verification:** In Lane 1, gift card redemption is verified non-custodially. The campaign UFVK detects when a note nullifier is spent; the winner submits their unique encrypted-memo `ACK-XXXX` code to confirm receipt and claim their DAO reputation.
-- **1-Click DB Scrub & Cryptographic Attestation:** Permanently purges all recipient addresses from MongoDB, computing and publishing a deterministic `sha256PurgedSetHash` proof on the public portal.
-- **Under-2-Minute Judge Sandbox:** Built-in interactive testnet demo loaded with pre-configured NU7 fixtures, sample gift slips, simulated nullifier sweeps, and instant faucet integration (`npx zcash-faucet`).
+- **Strict ZIP 316 preflight, browser and server:** Bech32m + F4Jumble decoding with the ZIP 316 consumer rules (ascending typecodes, no duplicates, MUST-understand metadata). Transparent addresses and UAs with a transparent receiver are refused; legacy Sapling is fully decoded and accepted with a warning.
+- **On-chain checks without keys:** funding, payout, gift-card sweep and clawback txids are looked up through public lightwalletd nodes (`testnet.zec.rocks`, the Zcash India node `zebra.openlightnodes.org`). ZecClaim records whether each is mined, at what height, and its shape: transparent inputs and outputs, Sapling outputs, Orchard and Ironwood actions.
+- **Paid means paid:** recipients count as distributed only once a payout txid is recorded and found on-chain, mined after the campaign was anchored and not claimed by another campaign. A payout with fewer shielded outputs than recipients, or with any transparent output, is flagged publicly. Winners can report a payout that never arrived; it then counts as awaiting. The address scrub waits for the payout.
+- **Tiered prizes:** each claim link can pay the even split, a fixed amount, or its own custom amount, and gift-card amounts can be planned per card before minting (imports must match the plan; the proof portal shows its progress).
+- **Fee-safe batches:** claim-link amounts reserve the ZIP 2009 fee, imports cannot over-allocate the funding, and each "Lock and export" run produces ZIP 321 URIs plus a `zingo-cli` script (correct `--chain` flags, confirmation waits between transactions).
+- **Viewing key kept private by default:** the portal shows the UFVK's SHA-256 fingerprint. Publishing the full key (whose outgoing viewing key decrypts every payout) is an explicit opt-in.
+- **Honest proof portal:** six funding buckets that always sum to the declared total, a "What the chain confirms" section, disputes, a ledger without addresses, the scrub commitment with a "still stored" count, and an audit trail. Demo data is labeled.
+- **Real funding only:** a campaign is anchored only to a funding transaction found on-chain with shielded outputs, and each funding transaction anchors one campaign.
+- **Clawback by date:** organizers pick a date (presets or a calendar); the server turns it into a block height from the live tip, and every page shows the estimated date next to the enforced height.
+- **Recoverable, revocable links:** unused claim links can be reissued from the console (the old ones stop working). Recipients can reopen their link to follow their payout up to the on-chain transaction.
+- **Production hardening:** organizer sign-in verified server-side, rate limits shared through MongoDB, fail-closed database (no silent memory fallback), CSP and `no-referrer` headers so claim tokens never leak, `noindex` on private pages, no public campaign listing.
+- **Light and dark themes:** tactile neomorphic UI, light by default, toggle in the header (or `?theme=dark`).
+
+## What Is Verified, and What Is Not
+
+| Claim | How |
+| :--- | :--- |
+| Addresses are shielded | ZIP 316 decoding, browser and server |
+| Funding / payout / sweep / clawback txids exist, height, confirmations | lightwalletd `GetTransaction` + `GetLatestBlock` |
+| A payout is fully shielded and big enough for its recipients | lightwalletd `GetBlock` compact transaction shape |
+| Clawback happened after the expiry height | live chain tip |
+| A payout was mined after the campaign was anchored, and no other campaign claims it | anchor height + cross-campaign txid check |
+| **Which wallet sent a payout** | **Not verified.** Shielded senders are hidden; an auditor with the viewing key can see whether it came from the campaign account. Winners can publicly report a payout that never arrived. |
+| **Amounts and recipients inside shielded transactions** | **Not verified.** They are encrypted; checking them needs viewing-key decryption (planned, see `docs/ARCHITECTURE.md` section 7). |
+| **That a gift card was swept by its attendee** | **Not verified.** Each card is its own key; receipts rest on the memo code plus an optional sweep txid. |
+
+The full threat model is in [`docs/SECURITY_AND_TRUST.md`](docs/SECURITY_AND_TRUST.md).
 
 ---
 
 ## Tech Stack & Standards
 
-- **Core Framework:** Next.js (App Router) + React 19 + TypeScript (`strict: true`)
-- **Styling:** Tailwind CSS (Sharp developer & audit tool aesthetic; no purple gradients, no pill buttons, high contrast)
-- **Database:** MongoDB + Mongoose (Atlas free-tier compatible with TTL indexes)
-- **Validation:** Zod schemas shared across API routes, UI forms, and CSV parsers
-- **Protocol & Crypto Layer:** Pure TypeScript modules in `src/lib/zcash/`
-- **Protocol Standards:**
-  - **ZIP 316:** Unified Addresses & Viewing Keys (Bech32m + F4Jumble)
-  - **ZIP 321:** Payment Request URIs (Indexed multi-payment + Base64URL memos)
-  - **ZIP 324:** URI-Encapsulated Payments / ZEC Gift Cards
-  - **ZIP 259:** NU7 Consensus Parameters (25s block time, 330 action cap, branch `0x77190AD9`)
-  - **ZIP 317 & ZIP 2009:** Proportional output fees (1,000 zatoshi marginal fee)
-  - **ZIP 311:** `zreceipt` Payment Disclosures (optional audit badges)
+- **Framework:** Next.js 15 (App Router) + React 19 + TypeScript (`strict: true`)
+- **Styling:** Tailwind CSS with CSS-variable tokens (tactile neomorphism, mint accent, light and dark)
+- **Database:** MongoDB + Mongoose (in-memory store for local runs and tests)
+- **Validation:** Zod schemas shared by API routes, forms and CSV parsers
+- **Chain access:** minimal lightwalletd gRPC client (`@grpc/grpc-js`, hand-written protobuf codec)
+- **Standards:** ZIP 316 (Unified Addresses / UFVKs), ZIP 321 (payment URIs), ZIP 324 (gift cards), ZIP 259 (NU7: 25 s blocks, branch `0x77190AD9`), ZIP 317 + ZIP 2009 (fees), lightwalletd `CompactTxStreamer`
 
 ---
 
-## Local Setup & Quickstart
+## Local Setup
 
 ### Prerequisites
-- Node.js >= 20.x
-- npm >= 10.x
-- MongoDB (local instance or MongoDB Atlas connection string)
+- Node.js >= 20, npm >= 10
+- Optional: MongoDB (local or Atlas). Without `MONGODB_URI` the app uses an in-memory store.
+- Outbound access to port 443 for the lightwalletd lookups.
 
-### 1. Clone & Install
+### 1. Install
 ```bash
-git clone https://github.com/ZecHub/zecclaim.git
+git clone <this-repository-url> zecclaim
 cd zecclaim
 npm install
 ```
 
-### 2. Configure Environment
+### 2. Configure (optional for a local demo)
 ```bash
 cp .env.example .env.local
 ```
-Update `.env.local` with your MongoDB URI:
-```env
-MONGODB_URI=mongodb://localhost:27017/zecclaim
-NEXT_PUBLIC_ZCASH_NETWORK=testnet
-NEXT_PUBLIC_ZCASH_LIGHTNODE_HOST=zebra.openlightnodes.org
-NEXT_PUBLIC_ZCASH_LIGHTNODE_PORT=443
-```
+| Variable | Purpose |
+| :--- | :--- |
+| `MONGODB_URI` | MongoDB connection string (Atlas works). Unset = in-memory store (single process, local only). |
+| `ADMIN_SECRET_PEPPER` | High-entropy secret for hashing claim tokens and organizer secrets (`openssl rand -hex 32`). **Required in production.** Changing it invalidates existing links and secrets. |
+| `NEXT_PUBLIC_ZECCLAIM_SANDBOX` | `off` removes the judge sandbox (seeded fixture campaign). On by default. |
+| `ZCASH_LIGHTWALLETD_TESTNET` / `ZCASH_LIGHTWALLETD_MAINNET` | Override the lightwalletd endpoints (`host:443`). |
+| `ZECCLAIM_CHAIN_CHECKS` | `off` disables on-chain lookups (checks are then shown as "Not checked"). |
+| `ZECCLAIM_ALLOW_MEMORY_FALLBACK` | `true` falls back to memory if MongoDB is down (default: fail closed with 503, in every environment). |
 
-### 3. Run Development Server
+### 3. Run
 ```bash
-npm run dev
+npm run dev        # http://localhost:3000
+npm run test       # vitest (no network: chain tests use an in-process fake lightwalletd)
+npm run typecheck && npm run lint && npm run build
 ```
-Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## 2-Minute Judge Walkthrough (NU7 Demo Sandbox)
+## 2-Minute Judge Walkthrough
 
-To verify all cryptographic and protocol behaviors without waiting for live testnet block confirmations:
+### Without a wallet: the judge sandbox
+`/sandbox` (linked from the home page) is one seeded testnet campaign with labeled fixture data. Its organizer secret is public and unlocks only that campaign: `sec_demo_nu7_mumbai_organizer_secret_key`.
 
-1. **Seed Demo Fixtures:**
-   ```bash
-   npm run seed:nu7
-   ```
-2. **Access the Judge Sandbox:**
-   Navigate to [http://localhost:3000](http://localhost:3000) and click **"Enter 2-Min NU7 Judge Sandbox"** (or open `/proof/demo-nu7-campaign`).
-3. **Verify Lane 1 (Offline Gift Slips & ACK):**
-   - View generated printable QR check-in slips (`CARD-01` through `CARD-10`).
-   - Trigger the **"Simulate Winner Sweep"** action. Notice how the watch-only UFVK detects the spent nullifier.
-   - Enter the winner's memo `ACK-7824` code at `/ack/demo-nu7-campaign` to confirm non-custodial receipt.
-4. **Verify Lane 2 (Online Preflight & Batch Export):**
-   - Open a blind claim link at `/claim/sample-token-1`.
-   - Test preflight rejection: paste a transparent address (`t1...`) or mixed UA to observe instantaneous ZIP 316 blocking.
-   - Paste a valid shielded Orchard/Ironwood UA: witness instant verification.
-   - Go to Admin view (`/admin/demo-nu7-campaign`), lock the queue, and observe **<= 300 Action Batch Chunking** with ZIP 2009 fee breakdown.
-   - Inspect the exported multi-recipient ZIP 321 URI and generated `zingo-cli` script configured for `zebra.openlightnodes.org:443`.
-5. **Verify 1-Click Scrub & DAO Proof Portal:**
-   - Click **"Execute 1-Click PII Scrub"**.
-   - Observe permanent deletion of raw recipient addresses from MongoDB and publication of the immutable `sha256PurgedSetHash` attestation on the public portal.
+1. **Claim with a shielded address:** open the sandbox claim link. Try the transparent or mixed example from "Will my address be accepted?" and watch it get refused, then submit a shielded one. Reopen the link: it shows the payout progress.
+2. **Confirm a meetup card:** on the receipt page, "Fill CARD-03 receipt" (memo code `ACK-4T8B2N7Y`). Optionally paste any recent testnet txid as the sweep txid: it is looked up live. Then "Fill CARD-05 dispute" and flag it.
+3. **Export, pay and scrub:** open the organizer console (the sandbox secret is prefilled), "Payout" tab: lock and export, copy the ZIP 321 URI or download the `zingo-cli` script, record a testnet payout txid (checked live: height, shape, problems flagged), then scrub.
+4. **Audit:** the proof portal shows the funding buckets, what the chain confirms, the dispute, the ledger, the scrub hash and the event trail. Fixtures are labeled "Demo fixture", never "On-chain".
+
+"Reset sandbox" restores the fixtures.
+
+### Real testnet run (recommended for the demo video)
+1. In Zingo (or `zingo-cli --chain testnet`), fund a testnet account used only for this campaign and run `export_ufvk`.
+2. Send the prize pool to it in one shielded transaction and copy the txid.
+3. `/admin/new`: paste the viewing key (the network is read from it), the txid (looked up as you type), the amount and the number of winners (or one amount per winner with "Custom per link"), and pick when the clawback opens. Create the campaign, download the backup, and send each winner a link.
+4. Winners open their link and submit a `utest1...` address; the console's link table updates live.
+5. "Payout" tab: lock and export, run the downloaded script, record the txid zingo-cli prints. The proof portal and each winner's link now show the payout mined, with its shielded actions and "no transparent inputs or outputs". Then scrub.
 
 ---
 
-## Documentation Index
+## Route Directory
 
-Detailed architectural and cryptographic specifications are located in the `docs/` directory:
+| Route | Visibility | Description |
+| :--- | :---: | :--- |
+| `/` | Public | What ZecClaim does, what you need, your campaigns, how each lane works, address checker, trust model. |
+| `/admin/new` | Public | Create a campaign: viewing key (network detected), funding txid checked live, amounts per claim link and per planned gift card (split evenly, fixed or custom), clawback date (converted to a block height), budget summary and checklist. Shows the organizer secret and claim links once, with backup and CSV downloads. |
+| `/admin/[campaignId]` | Organizer secret | Sign-in, then: claim links (live status, reissue, CSV import), payout (export, record txid, scrub), gift cards (import, slips, clawback), activity. Tabs follow the campaign lane. |
+| `/campaigns` | This browser | Campaigns created or opened here; open another by ID or link. |
+| `/sandbox` | Public | Judge sandbox: the seeded fixture campaign and its four steps. |
+| `/claim/[token]` | Link holder | Single-use claim with live ZIP 316 preflight; afterwards, live payout progress. |
+| `/ack/[campaignId]` | Public | Lane 1 receipt (memo code + optional sweep txid) and disputes. |
+| `/proof/[campaignId]` | Public | Proof portal. |
 
-- [AGENTS.md](file:///Users/tusharsinghchouhan/Desktop/zecclaim/AGENTS.md) — Standing operational rules & strict invariants
-- [docs/PRD.md](file:///Users/tusharsinghchouhan/Desktop/zecclaim/docs/PRD.md) — Product Requirements Document & User Stories
-- [docs/ARCHITECTURE.md](file:///Users/tusharsinghchouhan/Desktop/zecclaim/docs/ARCHITECTURE.md) — System Architecture, Schemas & API Contracts
-- [docs/PROTOCOL_SPECS.md](file:///Users/tusharsinghchouhan/Desktop/zecclaim/docs/PROTOCOL_SPECS.md) — Mathematical & Zcash Protocol Implementation Specs
-- [docs/SECURITY_AND_TRUST.md](file:///Users/tusharsinghchouhan/Desktop/zecclaim/docs/SECURITY_AND_TRUST.md) — Threat Model & Cryptographic Trust Boundaries
-- [docs/DESIGN_SYSTEM.md](file:///Users/tusharsinghchouhan/Desktop/zecclaim/docs/DESIGN_SYSTEM.md) — Visual Design System & Component Guidelines
-- [docs/BUILD_PLAN.md](file:///Users/tusharsinghchouhan/Desktop/zecclaim/docs/BUILD_PLAN.md) — Phased Implementation & Milestone Roadmap
+API contracts: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#5-api-endpoint-contracts).
+
+---
+
+## Documentation
+
+- [AGENTS.md](AGENTS.md): standing rules and invariants
+- [docs/PRD.md](docs/PRD.md): product requirements and user stories
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): architecture, data model, API contracts, on-chain checks
+- [docs/PROTOCOL_SPECS.md](docs/PROTOCOL_SPECS.md): ZIP 316 / 321 / 324 / 2009 details and the lightwalletd calls
+- [docs/SECURITY_AND_TRUST.md](docs/SECURITY_AND_TRUST.md): threat model, what is enforced, confirmed and trusted
+- [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md): visual design system
+- [docs/BUILD_PLAN.md](docs/BUILD_PLAN.md): build history and roadmap
 
 ---
 
 ## License
 
-MIT © ZecHub & ZecClaim Contributors. Free and open source for the Zcash ecosystem.
+[MIT](LICENSE). Free and open source for the Zcash ecosystem.

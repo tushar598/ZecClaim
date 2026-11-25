@@ -1,10 +1,10 @@
 import React from "react";
-import { clsx } from "clsx";
+import { cn as clsx } from "@/lib/cn";
 
 export function Table({ className, children, ...props }: React.TableHTMLAttributes<HTMLTableElement>) {
   return (
-    <div className="w-full overflow-x-auto border border-slate-800 rounded-none">
-      <table className={clsx("w-full text-left text-xs text-slate-300", className)} {...props}>
+    <div className="w-full overflow-x-auto rounded-[14px] neo-inset-sm">
+      <table className={clsx("w-full text-left text-[12.5px] text-ink-soft", className)} {...props}>
         {children}
       </table>
     </div>
@@ -18,7 +18,10 @@ export function TableHeader({
 }: React.HTMLAttributes<HTMLTableSectionElement>) {
   return (
     <thead
-      className={clsx("bg-slate-900 border-b border-slate-800 text-slate-400 font-mono uppercase", className)}
+      className={clsx(
+        "border-b border-line text-subtle font-semibold uppercase text-[10.5px] tracking-[0.06em]",
+        className
+      )}
       {...props}
     >
       {children}
@@ -26,9 +29,17 @@ export function TableHeader({
   );
 }
 
+export function TableBody({ className, children, ...props }: React.HTMLAttributes<HTMLTableSectionElement>) {
+  return (
+    <tbody className={clsx("divide-y divide-line/80", className)} {...props}>
+      {children}
+    </tbody>
+  );
+}
+
 export function TableRow({ className, children, ...props }: React.HTMLAttributes<HTMLTableRowElement>) {
   return (
-    <tr className={clsx("border-b border-slate-800/60 hover:bg-slate-900/50 transition-colors", className)} {...props}>
+    <tr className={clsx("transition-colors hover:bg-ink/[0.04]", className)} {...props}>
       {children}
     </tr>
   );
@@ -36,7 +47,7 @@ export function TableRow({ className, children, ...props }: React.HTMLAttributes
 
 export function TableHead({ className, children, ...props }: React.ThHTMLAttributes<HTMLTableCellElement>) {
   return (
-    <th className={clsx("px-4 py-3 font-medium", className)} {...props}>
+    <th className={clsx("px-4 py-3 font-semibold whitespace-nowrap", className)} {...props}>
       {children}
     </th>
   );
@@ -44,7 +55,7 @@ export function TableHead({ className, children, ...props }: React.ThHTMLAttribu
 
 export function TableCell({ className, children, ...props }: React.TdHTMLAttributes<HTMLTableCellElement>) {
   return (
-    <td className={clsx("px-4 py-3 font-mono", className)} {...props}>
+    <td className={clsx("px-4 py-3 align-middle", className)} {...props}>
       {children}
     </td>
   );

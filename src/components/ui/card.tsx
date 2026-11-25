@@ -1,16 +1,17 @@
 import React from "react";
-import { clsx } from "clsx";
+import { cn as clsx } from "@/lib/cn";
 
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-  amberAccent?: boolean;
+  /** "raised" neomorphic panel (default) or "inset" well */
+  tone?: "raised" | "inset";
 }
 
-export function Card({ className, amberAccent = false, children, ...props }: CardProps) {
+export function Card({ className, tone = "raised", children, ...props }: CardProps) {
   return (
     <div
       className={clsx(
-        "bg-slate-900 border border-slate-800 p-6 rounded-none relative",
-        amberAccent && "border-t-2 border-t-amber-500",
+        "relative rounded-[16px]",
+        tone === "raised" ? "neo-card" : "neo-inset",
         className
       )}
       {...props}
@@ -22,15 +23,23 @@ export function Card({ className, amberAccent = false, children, ...props }: Car
 
 export function CardHeader({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={clsx("mb-4 flex flex-col space-y-1", className)} {...props}>
+    <div className={clsx("px-5 sm:px-6 pt-5 pb-3 flex flex-col gap-1", className)} {...props}>
       {children}
     </div>
   );
 }
 
+export function CardEyebrow({ className, children, ...props }: React.HTMLAttributes<HTMLSpanElement>) {
+  return (
+    <span className={clsx("text-[11.5px] font-semibold tracking-[0.04em] text-mint-hover", className)} {...props}>
+      {children}
+    </span>
+  );
+}
+
 export function CardTitle({ className, children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
   return (
-    <h3 className={clsx("text-lg font-bold tracking-tight text-white", className)} {...props}>
+    <h3 className={clsx("text-[17px] font-bold tracking-[-0.015em] text-ink", className)} {...props}>
       {children}
     </h3>
   );
@@ -42,7 +51,7 @@ export function CardDescription({
   ...props
 }: React.HTMLAttributes<HTMLParagraphElement>) {
   return (
-    <p className={clsx("text-xs text-slate-400 leading-normal", className)} {...props}>
+    <p className={clsx("text-[13px] text-muted leading-relaxed", className)} {...props}>
       {children}
     </p>
   );
@@ -50,7 +59,7 @@ export function CardDescription({
 
 export function CardContent({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={clsx("text-sm text-slate-300", className)} {...props}>
+    <div className={clsx("px-5 sm:px-6 pb-6 text-[13px] text-ink-soft", className)} {...props}>
       {children}
     </div>
   );

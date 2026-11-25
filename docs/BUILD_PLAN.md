@@ -1,7 +1,9 @@
 # ZecClaim Phased MVP Implementation Plan
 
 **Objective:** Autonomous, test-driven roadmap from Phase 0 to Production Deployment  
-**Current Milestone:** Phase 0 (Architecture, Docs & Scaffolding)  
+**Current Milestone:** Phase 6 Completed (on-chain checks, honest Lane 1, production hardening)  
+
+> **Status note (November 2026):** Phases 0-5 below are the original plan and are kept as history. Two planned items were dropped after review because they could not work as designed: the UFVK nullifier watcher for Lane 1 (a gift card is its own key, outside the campaign UFVK) and the demo spend simulation. Phase 6 replaced them with lightwalletd checks; see the Phase 6 section at the end and `docs/ARCHITECTURE.md` section 7 for the roadmap.  
 
 ---
 
@@ -71,3 +73,15 @@
   1. `/proof/[campaignId]`: Public audit dashboard with UFVK inflows, nullifier table, and scrub attestations.
   2. `scripts/seed-nu7-demo.ts`: Pre-seeds a complete testnet campaign with mock nullifier sweeps and preflight fixtures.
   3. Judge Walkthrough sandbox mode with step-by-step interactive simulator.
+
+---
+
+### Phase 6: On-Chain Checks & Honest Lane 1 (COMPLETED)
+- **Goal:** Replace every simulated or self-reported claim that the chain can check.
+- **Delivered:**
+  1. `src/lib/zcash/lightwalletd.ts` + `src/lib/chain/txCheck.ts`: lightwalletd gRPC lookups (tx status, height, shape) with a fake-node test harness.
+  2. Funding txid checked at anchoring and re-checked on the proof portal; anchor height recorded; expiry height validated.
+  3. `POST /api/batch/payout`: payout txids recorded and checked (room for every recipient, no transparent outputs); "distributed" and the scrub depend on it.
+  4. Lane 1 receipts by memo code with optional on-chain sweep txid; disputes on any card; clawback gated on the live chain tip and an on-chain clawback txid. Spend simulation and the fake UFVK watcher removed.
+  5. UFVK fingerprint instead of the full key by default; shared MongoDB rate limits; fail-closed database in production; TTL deletion of ledger records removed.
+- **Next (roadmap):** viewing-key decryption (WASM) to verify funding amounts and payout recipients; per-card nullifier derivation in the browser for automatic sweep detection.

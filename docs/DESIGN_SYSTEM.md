@@ -1,84 +1,103 @@
 # ZecClaim Design System & UI Specification
 
-**Aesthetic Direction:** High-Contrast Developer & DAO Audit Tool  
-**Visual Style:** Sharp-cornered, dense data hierarchy, restrained Zcash amber accents, terminal-grade precision  
-**Status:** Canonical Reference for all UI/UX implementations  
+**Aesthetic Direction:** Tactile neomorphism (soft raised and inset surfaces) with a single mint accent
+**Themes:** Light (default, matches the reference design) and Dark (opt-in toggle)
+**Status:** Canonical reference for all UI work. Implementation: `tailwind.config.ts`, `src/app/globals.css`, `src/components/ui/*`
 
 ---
 
-## 1. Strict Anti-Cliché Rules & Prohibitions
+## 1. Principles
 
-To ensure ZecClaim looks and feels like a serious, professional cryptographic financial tool rather than generic web3 marketing fluff, the following patterns are **permanently banned**:
-
-1. **NO Purple Gradients:** Banned across all cards, backgrounds, headers, and buttons.
-2. **NO Pill-Shaped Buttons:** Banned `rounded-full` buttons. All buttons, cards, dialogs, inputs, and badges must use sharp corners (`rounded-none` or `rounded-sm`).
-3. **NO Fake Metrics or Mock Testimonials:** Zero fictional counters like "$10,000,000 Payouts Processed" or "Trusted by 100+ DAOs". Only live on-chain data is permitted.
-4. **NO Vague Marketing Hero Copy:** Prohibited phrases like "Unlocking the Future of Privacy". Use descriptive, functional headers like "Non-Custodial Batch Payout & Proof Portal".
-5. **NO Em Dashes in UI Copy:** Never use `—`. Use colons, parentheses, or simple hyphens (`-`).
+1. **One shell.** Every page lives inside a floating `.neo-shell` window: a 244px sidebar rail (logo, workspace nav, network switch) and a main panel with a top bar (section links, lightnode status, theme toggle, New Campaign CTA).
+2. **Depth, not borders.** Panels are raised (`.neo-card`), inputs and wells are pressed in (`.neo-inset`, `.neo-field`). Borders are reserved for dividers (`border-line`).
+3. **Mint means action or success.** The mint accent marks the primary CTA, the active nav item, the active tab indicator, and positive status. Nothing else is mint.
+4. **Truthful UI.** No fake metrics, no marketing fluff, no em dashes in copy, no claim of verification that did not happen. Simulated data carries a Demo or Simulated badge.
+5. **Every section earns its place.** A section either explains the idea or lets someone use the working product.
 
 ---
 
-## 2. Color Palette & Semantic Tokens
+## 2. Themes & Color Tokens
 
-### 2.1 Surfaces & Backgrounds
-- **Primary App Canvas:** `bg-slate-950` (`#020617`)
-- **Card & Container Surface:** `bg-slate-900` (`#0f172a`)
-- **Elevated Sub-Panel:** `bg-slate-800/80` (`#1e293b`)
-- **Borders & Dividers:** `border-slate-800` (subtle) / `border-slate-700` (focused)
+Colors are CSS variables holding RGB channels (`--c-*` in `globals.css`), exposed to Tailwind as `rgb(var(--c-x) / <alpha-value>)`, so opacity modifiers work and both themes share class names.
 
-### 2.2 Accent Palette (Restrained Zcash Amber)
-- **Amber Primary:** `bg-amber-500` (`#f59e0b`) / `text-amber-500`
-- **Amber Hover:** `hover:bg-amber-400` (`#fbbf24`)
-- **Amber Focus Ring:** `ring-amber-500/30`
-- **Amber Tinted Surface:** `bg-amber-500/10` with `border-amber-500/30`
+| Token (Tailwind) | Light | Dark | Use |
+| :--- | :--- | :--- | :--- |
+| `canvas` | `#E9EEF3` | `#11151B` | Page background |
+| `surface` | `#F2F5F8` | `#1A1F27` | Shell, cards, buttons |
+| `inset` / `rail` | `#EDF1F6` / `#EDF1F5` | `#151920` / `#161B22` | Wells, inputs / sidebar |
+| `line` | `#DCE4EE` | `#2C333E` | Dividers |
+| `ink` / `ink-soft` | `#232A34` / `#4C596B` | `#E6EBF1` / `#B7C1CE` | Primary / secondary text |
+| `muted` / `subtle` / `faint` | `#69778A` / `#8B97A8` / `#A5B1C2` | lighter greys | Body copy, labels, placeholders |
+| `mint` | `#14C39A` | `#14C39A` | Accent (fixed) |
+| `mint-hover` / `mint-deep` | `#0E9F7D` / `#0D8E6F` | `#34D3AA` / `#3DDCB4` | Accent text on surfaces |
+| `rose-fg`, `amber-fg`, `cyan-fg`, `violet-fg`, `slate-fg` | dark hues | light hues | Readable status text per theme |
 
-### 2.3 Semantic Status Colors & Badges
+Neomorphic shadows read `--neo-hi` (top-left highlight) and `--neo-lo` (bottom-right shade); the dark theme swaps them for a faint highlight and a deep shade.
 
-| Status Name | Background | Text Color | Border Color | Usage / Meaning |
-| :--- | :--- | :--- | :--- | :--- |
-| **Verified Shielded** | `bg-emerald-500/10` | `text-emerald-400` | `border-emerald-500/30` | Valid Orchard or Ironwood Unified Address |
-| **Rejected Transparent**| `bg-rose-500/10` | `text-rose-400` | `border-rose-500/30` | Blocked transparent `t1...` or mixed UA |
-| **Sapling Warning** | `bg-amber-500/10` | `text-amber-400` | `border-amber-500/30` | Valid legacy Sapling address with migration prompt |
-| **Spent Nullifier** | `bg-cyan-500/10` | `text-cyan-400` | `border-cyan-500/30` | Note nullifier spend confirmed on-chain |
-| **ACK Confirmed** | `bg-amber-500/10` | `text-amber-400` | `border-amber-500/30` | Encrypted memo ACK verified by recipient |
-| **Clawed Back** | `bg-slate-500/10` | `text-slate-400` | `border-slate-600/40` | Unspent funds returned to DAO treasury |
-| **PII Purged** | `bg-violet-500/10` | `text-violet-400` | `border-violet-500/30` | Addresses wiped with cryptographic attestation |
+**Theme switching:** `ThemeToggle` writes `data-theme` on `<html>` and stores the choice in `localStorage` (`zecclaim_theme`). An inline script in `<head>` (`themeScript.ts`) applies the saved theme before first paint. `?theme=dark|light` overrides and persists it.
 
 ---
 
-## 3. Typography Hierarchy
+## 3. Surface Classes (`globals.css`)
 
-- **UI & Headings:** `font-sans` (Inter or system sans-serif), clean letter-spacing (`tracking-tight`).
-- **Code, Addresses, TxIDs, UFVKs & Amounts:** `font-mono` (JetBrains Mono, Menlo, monospace), strict tabular numbers (`tabular-nums`).
-
-| Level | Tailwind Classes | Usage |
-| :--- | :--- | :--- |
-| **Display Header** | `text-2xl font-bold tracking-tight text-white` | Page titles, Campaign names |
-| **Section Header** | `text-lg font-semibold tracking-tight text-slate-200` | Table headers, Card titles |
-| **Metric Value** | `text-2xl font-mono font-bold text-amber-500` | Total ZEC, Action Counts, Confirmed Slots |
-| **Body Text** | `text-sm text-slate-300 leading-relaxed` | Descriptions, instructions, helper notes |
-| **Microcopy / Meta** | `text-xs font-mono text-slate-500` | Block heights, timestamps, hashes |
+| Class | Purpose |
+| :--- | :--- |
+| `.neo-shell` | Floating app window, dialogs |
+| `.neo-card`, `.neo-card-sm` | Raised panels, stat tiles, active nav item |
+| `.neo-inset`, `.neo-inset-sm` | Pressed wells: inputs, code blocks, segmented controls |
+| `.neo-field` | Text input / textarea / select (inset + mint focus ring) |
+| `.neo-btn` | Raised neutral button |
+| `.neo-btn-mint` | Signature primary CTA: mint outline, fills mint on hover |
+| `.neo-btn-danger` | Destructive CTA: rose outline, fills rose on hover |
+| `.neo-icon-btn` | Round or square icon buttons and icon tiles |
+| `.neo-visa-mint`, `.neo-visa-dark` | Gradient brand tiles (reference card style) |
 
 ---
 
-## 4. Reusable Sharp Component Specifications
+## 4. Typography
 
-### 4.1 Sharp Button (`components/ui/button.tsx`)
-- Sharp corners: `rounded-none` or `rounded-sm`.
-- Focus states: `focus:outline-none focus:ring-1 focus:ring-amber-500`.
-- Variants:
-  - `primary`: `bg-amber-500 text-slate-950 hover:bg-amber-400 font-medium px-4 py-2`
-  - `secondary`: `bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700 px-4 py-2`
-  - `danger`: `bg-rose-950/40 text-rose-300 hover:bg-rose-900/50 border border-rose-800 px-4 py-2`
-  - `outline`: `border border-slate-700 text-slate-300 hover:border-slate-500 px-4 py-2`
+- **Sans:** Plus Jakarta Sans (`font-sans`), headings `font-bold tracking-[-0.015em]` to `[-0.025em]`.
+- **Mono:** JetBrains Mono (`font-mono tabular-nums`) for amounts, addresses, keys, txids, block heights.
 
-### 4.2 Sharp Card (`components/ui/card.tsx`)
-- `bg-slate-900 border border-slate-800 p-6 rounded-none`
-- Crisp top border accent option: `border-t-2 border-t-amber-500`
+| Level | Classes |
+| :--- | :--- |
+| Page title | `text-[24px] sm:text-[26px] font-bold tracking-[-0.02em] text-ink` |
+| Section / card title | `text-[17px] font-bold tracking-[-0.015em] text-ink` |
+| Eyebrow | `text-[12px] font-semibold tracking-[0.04em] text-mint-hover` |
+| Body | `text-[13px]` to `text-[15px] text-muted leading-relaxed` |
+| Label | `text-[11.5px] font-semibold text-subtle` |
+| Metric | `font-mono tabular-nums text-[18px]` to `text-[20px] font-bold` |
 
-### 4.3 Address Preflight Input (`components/zcash/AddressPreflightInput.tsx`)
-- Live keystroke validation using `src/lib/zcash/zip316.ts`.
-- Sub-field validation badges:
-  - Green indicator when valid Orchard/Ironwood UA is detected.
-  - Red indicator with explanatory popup when `t1...` or mixed UA is typed.
-  - Amber warning box when legacy `zs1...` is detected.
+---
+
+## 5. Components (`src/components/ui`)
+
+- **Button / ButtonLink** (`button.tsx`): `primary` (mint outline), `solid`, `secondary`, `outline`, `danger`, `ghost`; sizes `sm` / `md` / `lg`.
+- **Card** (`card.tsx`): `tone="raised" | "inset"`, with `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`.
+- **Badge** (`badge.tsx`): status chips. `shielded` (Verified Shielded, mint), `transparent` (Rejected / Disputed, rose), `sapling` / `warning` (amber), `chain` (on-chain evidence, cyan), `ack` (solid mint), `clawback` (slate), `purged` (violet), `default`.
+- **Fields** (`field.tsx`): `Label`, `Hint`, `Input`, `Textarea`, `Select`, `Notice` (success / error / warning / info).
+- **Tabs** (`tabs.tsx`): `UnderlineTabs` (reference dock tabs with mint indicator) and `Segmented` (small inset switch).
+- **Choice** (`choice.tsx`): `RadioCards`, `ChipGroup`, `CheckRow`, `FormSection` (numbered form card).
+- Class names go through `cn()` (`src/lib/cn.ts`, tailwind-merge), so a `className` override such as `flex-row` always beats the component default.
+- **Misc** (`misc.tsx`): `StatTile`, `IconTile`, `CopyButton`, `KeyValueRow`, `Modal`, `PageHeading`.
+- **Table** (`table.tsx`): inset container, uppercase micro headers, row dividers.
+
+---
+
+## 6. Page Patterns
+
+| Page | Composition |
+| :--- | :--- |
+| Overview `/` | Hero (idea + CTAs + "before you start" requirements), your campaigns (browser-local), how each lane works, address checker, sandbox card, trust model |
+| New campaign | Numbered form sections (campaign, funding, claim links, gift-card slips, unclaimed funds) with inline validation; amount mode switch (split evenly, fixed, custom) with a per-row amount list that accepts a pasted spreadsheet column; radio cards for the lane; preset chips + date picker for the clawback with a live block-height preview; sticky summary with budget and a readiness checklist |
+| Campaign created | Organizer secret (remember toggle, backup download), claim links (per-link copy, CSV), funding and clawback facts, "I saved it" confirmation before leaving |
+| Organizer console | Sign-in gate, overview tiles (pool, funding check, clawback date), share links, lane-specific tabs: claim links table with reissue, payout steps 1-3, gift cards, activity. Polls every 15 s |
+| My campaigns | Browser-local list with console / proof / forget actions, open-by-ID form |
+| Claim link | Focused page without the workspace sidebar: campaign + exact amount, live ZIP 316 preflight; after submitting, a three-step payout timeline that refreshes every 30 s |
+| Receipt (ACK) | Receipt and dispute cards side by side; sandbox fill buttons only on the sandbox campaign |
+| Proof portal | Header facts (clawback estimate from the live tip), live refresh + copy link, funding allocation bar + buckets (exact amounts), chain checks, disputes, ledger table, scrub commitment, audit trail |
+| Sandbox `/sandbox` | The only page pointing at fixture data: public secret, four step cards, reset |
+
+**Amounts:** always exact (`zecExact`: up to 8 decimals, trailing zeros trimmed). Never round a fee or payout to 4 decimals.
+
+**Print:** QR slips force black on white and hide the shell (`print:` utilities). Sample slips carry a SAMPLE watermark and encode no key.

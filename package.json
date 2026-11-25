@@ -2,37 +2,46 @@
   "name": "zecclaim",
   "version": "0.1.0",
   "private": true,
-  "description": "100% Non-Custodial Dual-Mode QR Payout & ZecHub DAO Proof Portal for Post-NU7 Zcash",
+  "description": "Non-custodial shielded Zcash payouts for meetups and bounties, with on-chain checks and a public proof portal",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "seed:nu7": "tsx scripts/seed-nu7-demo.ts"
   },
   "dependencies": {
+    "@grpc/grpc-js": "^1.12.5",
+    "@noble/hashes": "^2.4.0",
+    "@scure/base": "^2.4.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.460.0",
     "mongoose": "^8.8.2",
     "next": "^15.0.3",
+    "qrcode": "^1.5.4",
     "react": "^19.0.0-rc-66855b96-20241106",
     "react-dom": "^19.0.0-rc-66855b96-20241106",
     "tailwind-merge": "^2.5.4",
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.7",
     "@types/node": "^22.9.0",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "autoprefixer": "^10.4.20",
     "dotenv": "^16.4.5",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^15.5.29",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.15",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",
     "vitest": "^2.1.5"
-  }
+  },
+  "license": "MIT"
 }

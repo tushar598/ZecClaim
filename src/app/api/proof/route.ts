@@ -1,26 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getCampaignProofData } from "@/lib/proof/getProofData";
+import { errorResponse } from "@/lib/http";
 
 /**
  * GET /api/proof
- * Returns read-only UFVK ledger, confirmed nullifiers, and public audit attestations.
+ * Public proof data (?campaignId=...): ledger, on-chain checks, disputes, scrub commitment, audit trail.
  */
 export async function GET(req: NextRequest) {
-  const searchParams = req.nextUrl.searchParams;
-  const campaignId = searchParams.get("campaignId") || "demo-nu7-campaign";
+  try {
+    const searchParams = req.nextUrl.searchParams;
+    const campaignId = searchParams.get("campaignId") || "demo-nu7-campaign";
 
-  return NextResponse.json({
-    campaignId,
-    ufvkAnchor: "uview1demoanchor9876543210zyxwvutsrqponmlkjihgfedcba",
-    fundingTxid: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-    totalFundedZat: 100_000_000,
-    confirmedNullifiersCount: 1,
-    pendingClaimsCount: 0,
-    clawedBackZat: 0,
-    consensus: {
-      network: "testnet",
-      branchId: "0x77190AD9",
-      targetSpacingSeconds: 25,
-      marginalFeeZat: 1000,
-    },
-  });
+    const proof = await getCampaignProofData(campaignId);
+
+    if (!proof) {
+      return NextResponse.json({ success: false, error: "Campaign not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      ...proof,
+    });
+  } catch (err: unknown) {
+    return errorResponse(err, "Server error", 500);
+  }
 }
