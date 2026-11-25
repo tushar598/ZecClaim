@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useState, use } from "react";
 import Link from "next/link";
-import { CheckCircle2, Circle, ExternalLink, Link2, Loader2, Lock, ShieldCheck } from "lucide-react";
+import { CheckCircle2, Circle, Clock, ExternalLink, Link2, Loader2, Lock, ShieldCheck } from "lucide-react";
 import { clsx } from "clsx";
 import { AddressPreflightInput } from "@/components/zcash/AddressPreflightInput";
 import { Button } from "@/components/ui/button";
@@ -37,20 +37,32 @@ interface SlotData {
   payout: { txid: string; status: string | null; height: number | null; confirmations: number | null } | null;
 }
 
-function Step({ done, active, title, children }: { done: boolean; active?: boolean; title: string; children?: React.ReactNode }) {
+type StepState = "done" | "pending" | "upcoming";
+
+/**
+ * One step of the payout timeline. "pending" means waiting on the organizer (often hours), so it
+ * shows a static clock and a label, never a spinner: nothing is loading on the recipient's side.
+ */
+function Step({ state, title, children }: { state: StepState; title: string; children?: React.ReactNode }) {
   return (
     <li className="flex gap-3">
       <span className="flex flex-col items-center">
-        {done ? (
-          <CheckCircle2 className="w-5 h-5 text-mint shrink-0" />
-        ) : active ? (
-          <Loader2 className="w-5 h-5 text-amber-fg animate-spin shrink-0" />
+        {state === "done" ? (
+          <CheckCircle2 className="w-5 h-5 text-mint shrink-0" aria-hidden="true" />
+        ) : state === "pending" ? (
+          <Clock className="w-5 h-5 text-amber-fg shrink-0" aria-hidden="true" />
         ) : (
-          <Circle className="w-5 h-5 text-faint shrink-0" />
+          <Circle className="w-5 h-5 text-faint shrink-0" aria-hidden="true" />
         )}
       </span>
       <div className="pb-4 min-w-0">
-        <p className={clsx("text-[13.5px] font-semibold", done ? "text-ink" : active ? "text-ink-soft" : "text-subtle")}>{title}</p>
+        <p className="flex flex-wrap items-center gap-2">
+          <span className={clsx("text-[13.5px] font-semibold", state === "done" ? "text-ink" : state === "pending" ? "text-ink-soft" : "text-subtle")}>
+            {title}
+          </span>
+          {state === "pending" && <Badge variant="warning">Pending</Badge>}
+          <span className="sr-only">{state === "done" ? "(done)" : state === "upcoming" ? "(not started)" : ""}</span>
+        </p>
         {children && <div className="text-[12.5px] text-muted leading-relaxed mt-0.5">{children}</div>}
       </div>
     </li>
@@ -61,11 +73,12 @@ function Step({ done, active, title, children }: { done: boolean; active?: boole
 function Progress({ slot }: { slot: SlotData }) {
   const submitted = slot.status !== "UNCLAIMED";
   const exported = Boolean(slot.batchRun) || slot.status === "BATCHED" || Boolean(slot.payout);
-  const paid = Boolean(slot.payout);
   const mined = slot.payout?.status === "MINED";
+  const batchState: StepState = exported ? "done" : submitted ? "pending" : "upcoming";
+  const paidState: StepState = mined ? "done" : exported ? "pending" : "upcoming";
   return (
     <ol className="neo-inset-sm rounded-[14px] px-4 pt-4" aria-label="Payout progress">
-      <Step done={submitted} title="Address received">
+      <Step state={submitted ? "done" : "upcoming"} title="Address received">
         {slot.addressHint ? (
           <>
             <span className="font-mono text-ink-soft">{slot.addressHint}</span>
@@ -76,22 +89,26 @@ function Progress({ slot }: { slot: SlotData }) {
           "The organizer has deleted the stored address after paying."
         ) : null}
       </Step>
-      <Step done={exported} active={submitted && !exported} title="Included in a payout batch">
-        {exported ? `Batch run ${slot.batchRun ?? ""} exported for the organizer's wallet.` : submitted ? "Waiting for the organizer to send the next batch." : null}
+      <Step state={batchState} title="Included in a payout batch">
+        {batchState === "done"
+          ? `Added to payout batch ${slot.batchRun ?? ""} for the organizer's wallet.`
+          : batchState === "pending"
+            ? "Nothing more is needed from you. The organizer pays recipients together in a batch, so this can take a while."
+            : null}
       </Step>
-      <Step done={paid && mined} active={exported && !(paid && mined)} title="Paid on-chain">
+      <Step state={paidState} title="Paid on-chain">
         {slot.payout ? (
           <>
             Transaction <span className="font-mono text-ink-soft">{shortTxid(slot.payout.txid)}</span>
             {mined
               ? `, mined at height ${slot.payout.height?.toLocaleString("en-US")} (${slot.payout.confirmations} confirmation${slot.payout.confirmations === 1 ? "" : "s"}).`
               : slot.payout.status === "MEMPOOL"
-                ? ", in the mempool."
-                : "."}{" "}
+                ? " sent, waiting for the next block (about 25 seconds)."
+                : " recorded by the organizer."}{" "}
             Your wallet shows the funds once it syncs.
           </>
-        ) : exported ? (
-          "Waiting for the organizer to broadcast and record the payout."
+        ) : paidState === "pending" ? (
+          "Batch ready. Waiting for the organizer to send it from their wallet."
         ) : null}
       </Step>
     </ol>
@@ -287,10 +304,10 @@ export default function ClaimSlotPage({ params }: ClaimPageProps) {
               {justSubmitted ? (
                 <Notice tone="success" className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>Address accepted. Keep this link: it shows your payout status, live.</span>
+                  <span>Address accepted. You are all set: the organizer sends the payout. Keep this link to follow it; it updates by itself.</span>
                 </Notice>
               ) : (
-                <p className="text-[13px] text-muted">This link has been used. Here is where the payout stands:</p>
+                <p className="text-[13px] text-muted">Your address is saved. Here is where the payout stands (this page updates by itself):</p>
               )}
               <Progress slot={slot} />
               <PayoutReport token={token} slot={slot} onReported={load} />
